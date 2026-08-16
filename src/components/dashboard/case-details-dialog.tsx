@@ -102,7 +102,13 @@ const intervalLogSchema = z.object({
 const toDate = (date: Date | string | Timestamp | null | undefined): Date | undefined => {
     if (!date) return undefined;
     if (date instanceof Timestamp) return date.toDate();
-    if (typeof date === 'string') return new Date(date);
+    if (typeof date === 'string') {
+        if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+            const [year, month, day] = date.split('-').map(Number);
+            return new Date(year, month - 1, day);
+        }
+        return new Date(date);
+    }
     return date;
 }
 
@@ -284,7 +290,7 @@ export function CaseDetailsDialog({ caseData: initialCase, open, onOpenChange }:
     }
 
     setIsSubmitting(true);
-    const baseDate = toDate(caseData.createdAt) || new Date();
+    const baseDate = toDate(caseData.visitDate) || toDate(caseData.createdAt) || new Date();
     const actualArrivalTime = values.caseOtCallBackWithin15MinsOfExpectedArrival ? combineDateAndTime(baseDate, values.actualArrivalTime) : null;
     
     const updateData: Partial<Case> = {
@@ -364,7 +370,7 @@ export function CaseDetailsDialog({ caseData: initialCase, open, onOpenChange }:
     }
 
     setIsSubmitting(true);
-    const baseDate = toDate(caseData.createdAt) || new Date();
+    const baseDate = toDate(caseData.visitDate) || toDate(caseData.createdAt) || new Date();
     const caseClosingTime = combineDateAndTime(baseDate, values.caseClosingTime);
     
     const updateData: Partial<Case> = {
@@ -398,7 +404,7 @@ export function CaseDetailsDialog({ caseData: initialCase, open, onOpenChange }:
   const handleIntervalSubmit = async (values: z.infer<typeof intervalLogSchema>) => {
     if (!caseData) return;
     setIsSubmitting(true);
-    const baseDate = toDate(caseData.createdAt) || new Date();
+    const baseDate = toDate(caseData.visitDate) || toDate(caseData.createdAt) || new Date();
     
     const intervals: CGATIntervalVisit[] = values.cgatIntervals.map((iv, index) => {
         const isFirst = index === 0;
@@ -460,7 +466,7 @@ export function CaseDetailsDialog({ caseData: initialCase, open, onOpenChange }:
             
             <TabsContent value="case-details" className="flex-1 overflow-y-auto pr-4 mt-4 space-y-6">
                 <div className="grid grid-cols-2 gap-6">
-                    <DetailItem label="Created Date" value={caseData.createdAt ? format(toDate(caseData.createdAt)!, 'dd/MM/yyyy') : 'N/A'} />
+                    <DetailItem label="Visit Date" value={format(toDate(caseData.visitDate) || toDate(caseData.createdAt)!, 'dd/MM/yyyy')} />
                     {isCOT && <DetailItem label="Patient OPD" value={patientOpdDisplay} />}
                     {isCOT && <DetailItem label="Patient Phone" value={patientPhoneDisplay} />}
                     {isCOT && <DetailItem label="Home Visit District" value={caseData.homeVisitDistrict} />}

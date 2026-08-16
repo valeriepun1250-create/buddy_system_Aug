@@ -69,6 +69,7 @@ export interface Case {
   patientPhone: string[];
   oahNames?: string[];
   homeVisitDistrict?: string;
+  visitDate?: Date | string | Timestamp;
   status: CaseStatus;
   openingTherapistId: string;
   buddyTherapistId: string;

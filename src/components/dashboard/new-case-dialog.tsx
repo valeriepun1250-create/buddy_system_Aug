@@ -38,6 +38,7 @@ import { TimeInput } from '../ui/time-input';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import type { Case, CGATVisitUnit } from '@/lib/types';
 import { PlusCircle, Trash2, Loader2 } from 'lucide-react';
+import { format } from 'date-fns';
 
 interface NewCaseDialogProps {
   open: boolean;
@@ -178,12 +179,14 @@ export function NewCaseDialog({ open, onOpenChange, initialData, caseType }: New
   const [activeTab, setActiveTab] = useState('case-details');
   const [isRiskChecklistInvalid, setIsRiskChecklistInvalid] = useState(false);
   const noRiskFactorCheckboxRef = useRef<HTMLButtonElement>(null);
+  const riskChecklistScrollRef = useRef<HTMLDivElement>(null);
 
   const formSchema = useMemo(() => {
     return z.object({
       patientOPD: z.string().optional(),
       patientPhone: z.string().optional(),
       homeVisitDistrict: z.string().optional(),
+      visitDate: z.string().optional(),
       cgatVisits: z.array(z.object({
         oahName: z.string().optional(),
         oahPhone: z.string().optional(),
@@ -223,6 +226,10 @@ export function NewCaseDialog({ open, onOpenChange, initialData, caseType }: New
           });
         }
       }
+
+      if ((caseType === 'COT' || caseType === 'CGAT') && !data.visitDate) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['visitDate'], message: 'Visit Date is required' });
+      }
     });
   }, [caseType, userProfile]);
 
@@ -232,6 +239,7 @@ export function NewCaseDialog({ open, onOpenChange, initialData, caseType }: New
       patientOPD: '',
       patientPhone: '',
       homeVisitDistrict: '',
+      visitDate: format(new Date(), 'yyyy-MM-dd'),
       cgatVisits: [{ oahName: '', oahPhone: '', patients: [{ opd: '' }] }],
       therapistPhone: '',
       buddyTherapistId: '',
@@ -274,6 +282,7 @@ export function NewCaseDialog({ open, onOpenChange, initialData, caseType }: New
           patientOPD: initialData.caseType === 'COT' ? initialData.patientOPD[0] : '',
           patientPhone: initialData.caseType === 'COT' ? initialData.patientPhone[0] : '',
           homeVisitDistrict: initialData.homeVisitDistrict || '',
+          visitDate: format(new Date(), 'yyyy-MM-dd'),
           cgatVisits: initialCgatVisits,
           therapistPhone: initialData.therapistPhone || '',
           buddyTherapistId: initialData.buddyTherapistId === userProfile?.name ? '' : initialData.buddyTherapistId,
@@ -286,6 +295,7 @@ export function NewCaseDialog({ open, onOpenChange, initialData, caseType }: New
             patientOPD: '',
             patientPhone: '',
             homeVisitDistrict: '',
+            visitDate: format(new Date(), 'yyyy-MM-dd'),
             cgatVisits: [{ oahName: '', oahPhone: '', patients: [{ opd: '' }] }],
             therapistPhone: '',
             buddyTherapistId: '',
@@ -314,7 +324,23 @@ export function NewCaseDialog({ open, onOpenChange, initialData, caseType }: New
         setIsRiskChecklistInvalid(true);
         if (errors.riskFactorChecklist.noRiskFactors) {
             setTimeout(() => {
-                noRiskFactorCheckboxRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                const scrollContainer = riskChecklistScrollRef.current;
+                const target = noRiskFactorCheckboxRef.current;
+
+                if (!scrollContainer || !target) return;
+
+                const containerRect = scrollContainer.getBoundingClientRect();
+                const targetRect = target.getBoundingClientRect();
+                const centeredTop = scrollContainer.scrollTop
+                    + targetRect.top
+                    - containerRect.top
+                    - (scrollContainer.clientHeight - targetRect.height) / 2;
+                const maxScrollTop = scrollContainer.scrollHeight - scrollContainer.clientHeight;
+
+                scrollContainer.scrollTo({
+                    top: Math.max(0, Math.min(centeredTop, maxScrollTop)),
+                    behavior: 'smooth',
+                });
             }, 100);
         }
     } else {
@@ -326,8 +352,18 @@ export function NewCaseDialog({ open, onOpenChange, initialData, caseType }: New
     if (!userProfile || !caseType) return;
     
     const today = new Date();
+    const visitDateParts = values.visitDate?.split('-').map(Number);
+    const visitDate = visitDateParts?.length === 3
+      ? new Date(visitDateParts[0], visitDateParts[1] - 1, visitDateParts[2])
+      : today;
     const [hours, minutes] = values.expectedArrivalTime.split(':');
-    const expectedArrivalTime = new Date(today.getFullYear(), today.getMonth(), today.getDate(), parseInt(hours), parseInt(minutes));
+    const expectedArrivalTime = new Date(
+      visitDate.getFullYear(),
+      visitDate.getMonth(),
+      visitDate.getDate(),
+      parseInt(hours),
+      parseInt(minutes)
+    );
 
     let patientOPD: string[] = [];
     let patientPhone: string[] = [];
@@ -368,6 +404,8 @@ export function NewCaseDialog({ open, onOpenChange, initialData, caseType }: New
       homeVisitDistrict: values.homeVisitDistrict || '',
     };
 
+    caseData.visitDate = visitDate;
+
     if (caseType === 'CGAT') {
       caseData.cgatVisitUnits = cgatVisitUnits;
     }
@@ -397,12 +435,12 @@ export function NewCaseDialog({ open, onOpenChange, initialData, caseType }: New
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
-        className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
+        className="max-w-4xl h-[90dvh] max-h-[90dvh] overflow-hidden flex flex-col"
         onPointerDownOutside={(e) => e.preventDefault()}
       >
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit, onInvalidSubmit)} className="flex flex-col h-full overflow-hidden">
-            <DialogHeader>
+          <form onSubmit={form.handleSubmit(onSubmit, onInvalidSubmit)} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <DialogHeader className="shrink-0">
               <DialogTitle className='font-headline text-2xl'>{title}</DialogTitle>
               <DialogDescription>
                 {initialData ? "The information from the original case has been pre-filled." : 'Fill in the details to create a new home visit case.'}
@@ -416,7 +454,7 @@ export function NewCaseDialog({ open, onOpenChange, initialData, caseType }: New
                 });
               }
               setActiveTab(tab)
-            }} className="flex-1 overflow-hidden flex flex-col py-4">
+            }} className="flex min-h-0 flex-1 flex-col overflow-hidden py-4">
               <TabsList className="grid w-full grid-cols-2 bg-primary/10 p-1 h-auto shrink-0">
                 <TabsTrigger value="case-details" className='data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'>Case Details</TabsTrigger>
                 <TabsTrigger value="risk-checklist" className={cn(
@@ -425,7 +463,7 @@ export function NewCaseDialog({ open, onOpenChange, initialData, caseType }: New
                 )}>Risk Checklist</TabsTrigger>
               </TabsList>
               
-              <TabsContent value="case-details" className="flex-1 overflow-y-auto pr-2 mt-4 space-y-6">
+              <TabsContent value="case-details" className="min-h-0 flex-1 overflow-y-auto pr-2 mt-4 space-y-6">
                 {caseType === 'COT' ? (
                   <div className="grid gap-4 p-4 border rounded-lg bg-card shadow-sm">
                     <h4 className="font-bold text-primary mb-2">Visit Details</h4>
@@ -453,20 +491,46 @@ export function NewCaseDialog({ open, onOpenChange, initialData, caseType }: New
                         )}
                       />
                     </div>
-                    <FormField
-                      control={form.control}
-                      name="homeVisitDistrict"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Home visit district</FormLabel>
-                          <FormControl><Input placeholder="e.g., Yau Tsim Mong" {...field} /></FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="homeVisitDistrict"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Home visit district</FormLabel>
+                            <FormControl><Input placeholder="e.g., Yau Tsim Mong" {...field} /></FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="visitDate"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Visit Date</FormLabel>
+                            <FormControl><Input type="date" {...field} /></FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
                   </div>
                 ) : (
                   <div className="space-y-6">
+                    <div className="w-[11.5rem]">
+                      <FormField
+                        control={form.control}
+                        name="visitDate"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Visit Date</FormLabel>
+                            <FormControl><Input type="date" {...field} /></FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
                     {oahFields.map((field, index) => (
                       <CGATVisitUnit key={field.id} control={form.control} index={index} removeOAH={removeOAH} />
                     ))}
@@ -558,7 +622,7 @@ export function NewCaseDialog({ open, onOpenChange, initialData, caseType }: New
                 </div>
               </TabsContent>
               
-              <TabsContent value="risk-checklist" className="flex-1 overflow-y-auto pr-2 mt-4">
+              <TabsContent ref={riskChecklistScrollRef} value="risk-checklist" className="min-h-0 flex-1 overflow-y-auto pr-2 mt-4">
                 <RiskFactorChecklistForm form={form} noRiskFactorCheckboxRef={noRiskFactorCheckboxRef} />
               </TabsContent>
             </Tabs>

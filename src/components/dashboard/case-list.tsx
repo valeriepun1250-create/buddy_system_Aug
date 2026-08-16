@@ -44,7 +44,8 @@ interface CaseListProps {
 
 const PAGE_SIZE = 15;
 
-const toCreatedAtDate = (date: Case['createdAt']) => {
+const toVisitDate = (caseData: Case) => {
+  const date = caseData.visitDate || caseData.createdAt;
   return date instanceof Timestamp ? date.toDate() : new Date(date);
 };
 
@@ -109,7 +110,7 @@ export function CaseList({ cases, onCaseSelect, onCaseCopy }: CaseListProps) {
                 <TableHead>Type</TableHead>
                 <TableHead>Patient OPD</TableHead>
                 <TableHead>Therapists</TableHead>
-                <TableHead className="hidden md:table-cell">Created</TableHead>
+                <TableHead className="hidden md:table-cell">Visit Date</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -123,7 +124,7 @@ export function CaseList({ cases, onCaseSelect, onCaseCopy }: CaseListProps) {
                 };
                 const openingTherapist = findUserByName(caseItem.openingTherapistId);
                 const buddyTherapist = findUserByName(caseItem.buddyTherapistId);
-                const createdAt = toCreatedAtDate(caseItem.createdAt);
+                const visitDate = toVisitDate(caseItem);
                 
                 return (
                   <TableRow
@@ -149,7 +150,7 @@ export function CaseList({ cases, onCaseSelect, onCaseCopy }: CaseListProps) {
                       </div>
                     </TableCell>
                     <TableCell onClick={() => onCaseSelect(caseItem)} className="hidden md:table-cell cursor-pointer">
-                      {format(createdAt, 'dd/MM/yyyy')}
+                      {format(visitDate, 'dd/MM/yyyy')}
                     </TableCell>
                     <TableCell className="text-right">
                        <DropdownMenu>

@@ -12,7 +12,8 @@ import type { Case } from '@/lib/types';
 import { Timestamp } from 'firebase/firestore';
 import { SelectCaseTypeDialog } from './select-case-type-dialog';
 
-const toCreatedAtMillis = (date: Case['createdAt']) => {
+const toVisitDateMillis = (caseData: Case) => {
+  const date = caseData.visitDate || caseData.createdAt;
   return date instanceof Timestamp ? date.toMillis() : new Date(date).getTime();
 };
 
@@ -49,8 +50,8 @@ export function CaseDashboard() {
 
   const allCases = useMemo(() => {
     return [...cases].sort((a, b) => {
-        const dateA = toCreatedAtMillis(a.createdAt);
-        const dateB = toCreatedAtMillis(b.createdAt);
+        const dateA = toVisitDateMillis(a);
+        const dateB = toVisitDateMillis(b);
         return dateB - dateA;
     });
   }, [cases]);
