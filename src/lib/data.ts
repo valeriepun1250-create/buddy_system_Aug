@@ -1,0 +1,62 @@
+
+import type { UserProfile, Case } from './types';
+
+export const users: UserProfile[] = [
+  { id: 'user-1', uid: 'uid-1', name: 'Alice', email: 'alice@homevisithero.com', role: 'Case Therapist', phone: '1234-5678', approved: true },
+  { id: 'user-2', uid: 'uid-2', name: 'Bob', email: 'bob@homevisithero.com', role: 'Case Therapist', phone: '2345-6789', approved: true },
+  { id: 'user-3', uid: 'uid-3', name: 'Carol', email: 'carol@homevisithero.com', role: 'Case Therapist', phone: '3456-7890', approved: true },
+  { id: 'user-4', uid: 'uid-4', name: 'Charlie', email: 'charlie@homevisithero.com', role: 'Clerk', phone: '4567-8901', approved: true },
+  { id: 'user-5', uid: 'uid-5', name: 'Dana', email: 'dana@homevisithero.com', role: 'Clerk', phone: '5678-9012', approved: true },
+];
+
+export const initialCases: Case[] = [
+  {
+    id: 'case-1',
+    caseType: 'COT',
+    patientOPD: ['OCC 1111111A'],
+    patientPhone: ['1234-5678'],
+    status: 'To be completed by clerk',
+    openingTherapistId: 'Alice',
+    buddyTherapistId: 'Bob',
+    therapistPhone: '3506-1111',
+    expectedArrivalTime: new Date(new Date().getTime() + 2 * 60 * 60 * 1000), 
+    createdAt: new Date(),
+    willOtReturnToDepartment: true,
+  },
+  {
+    id: 'case-2',
+    caseType: 'COT',
+    patientOPD: ['OCC 2222222B'],
+    patientPhone: ['0987-6543'],
+    status: 'To be follow up by clerk/buddy OT',
+    openingTherapistId: 'Bob',
+    buddyTherapistId: 'Carol',
+    therapistPhone: '3506-2222',
+    expectedArrivalTime: new Date(new Date().getTime() + 3 * 60 * 60 * 1000),
+    responsibleClerkId: 'Charlie',
+    therapistLeavingTime: new Date(new Date().getTime() + 45 * 60 * 1000),
+    actualArrivalTime: new Date(new Date().getTime() + 1 * 60 * 60 * 1000),
+    expectedFinishTime: new Date(new Date().getTime() + 2 * 60 * 60 * 1000),
+    createdAt: new Date(new Date().getTime() - 24 * 60 * 60 * 1000),
+    willOtReturnToDepartment: false,
+  },
+  {
+    id: 'case-3',
+    caseType: 'CGAT',
+    patientOPD: ['OCC 3333333C'],
+    patientPhone: ['5555-5555'],
+    oahNames: ['Happy Valley OAH'],
+    status: 'Complete',
+    openingTherapistId: 'Carol',
+    buddyTherapistId: 'Alice',
+    therapistPhone: '3506-3333',
+    expectedArrivalTime: new Date(new Date().getTime() - 2 * 24 * 60 * 60 * 1000),
+    responsibleClerkId: 'Dana',
+    therapistLeavingTime: new Date(new Date().getTime() - 2 * 24 * 60 * 60 * 1000 - 30 * 60 * 1000),
+    actualArrivalTime: new Date(new Date().getTime() - 2 * 24 * 60 * 60 * 1000 + 30 * 60 * 1000),
+    expectedFinishTime: new Date(new Date().getTime() - 2 * 24 * 60 * 60 * 1000 + 1.5 * 60 * 60 * 1000),
+    caseClosingTime: new Date(new Date().getTime() - 2 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000),
+    createdAt: new Date(new Date().getTime() - 3 * 24 * 60 * 60 * 1000),
+    willOtReturnToDepartment: true,
+  },
+];

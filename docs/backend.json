@@ -1,0 +1,115 @@
+
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Represents a user's profile information.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "The user's unique ID from Firebase Auth."
+        },
+        "name": {
+          "type": "string",
+          "description": "The user's full name, which also serves as the document ID."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The user's email address."
+        },
+        "phone": {
+          "type": "string",
+          "description": "The user's phone number."
+        },
+        "role": {
+          "type": "string",
+          "enum": ["Case Therapist", "Clerk", "Admin"],
+          "description": "The user's role in the system."
+        },
+        "approved": {
+          "type": "boolean",
+          "description": "Whether the user has been approved by an admin."
+        }
+      },
+      "required": ["uid", "name", "email", "phone", "role", "approved"]
+    },
+    "Case": {
+      "title": "Case",
+      "description": "Represents a home visit case.",
+      "type": "object",
+      "properties": {
+        "caseType": {
+          "type": "string",
+          "enum": ["COT", "CGAT"],
+          "description": "The type of home visit."
+        },
+        "patientOPD": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "patientPhone": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "oahNames": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "homeVisitDistrict": { "type": "string" },
+        "status": {
+          "type": "string",
+          "enum": ["To be completed by clerk", "To be follow up by clerk/buddy OT", "Complete"]
+        },
+        "openingTherapistId": { "type": "string" },
+        "buddyTherapistId": { "type": "string" },
+        "therapistPhone": { "type": "string" },
+        "expectedArrivalTime": { "type": "string", "format": "date-time" },
+        "responsibleClerkId": { "type": "string" },
+        "therapistLeavingTime": { "type": "string", "format": "date-time" },
+        "actualArrivalTime": { "type": "string", "format": "date-time" },
+        "caseClosingTime": { "type": "string", "format": "date-time" },
+        "cgatIntervals": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "oahName": { "type": "string" },
+              "inTime": { "type": "string", "format": "date-time" },
+              "outTime": { "type": "string", "format": "date-time" }
+            }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "willOtReturnToDepartment": { "type": "boolean" },
+        "arrivalTimeOutOfOfficeHourNotifiedBuddy": { "type": "boolean" }
+      },
+      "required": [
+        "caseType",
+        "patientOPD",
+        "patientPhone",
+        "status",
+        "openingTherapistId",
+        "buddyTherapistId",
+        "therapistPhone",
+        "expectedArrivalTime",
+        "createdAt",
+        "willOtReturnToDepartment"
+      ]
+    }
+  },
+  "auth": {
+    "providers": ["password"]
+  },
+  "firestore": {
+    "/users/{username}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Stores user profiles."
+    },
+    "/cases/{caseId}": {
+      "schema": { "$ref": "#/entities/Case" },
+      "description": "Stores home visit cases."
+    }
+  }
+}
