@@ -12,6 +12,7 @@ import { FirestorePermissionError } from '@/firebase/errors';
 interface AppContextType {
   user: any; 
   userProfile: UserProfile | null;
+  sessionLoading: boolean;
   cases: Case[];
   users: UserProfile[];
   logout: () => void;
@@ -54,6 +55,8 @@ function AppProviderInner({ children }: { children: ReactNode }) {
   const userProfileQuery = useMemo(() => authUser && usersRef ? query(usersRef, where('uid', '==', authUser.uid)) : null, [usersRef, authUser]);
   const { data: userProfileData, loading: profileLoading } = useCollection<UserProfile>(userProfileQuery);
   const userProfile = useMemo(() => (userProfileData && userProfileData.length > 0 ? userProfileData[0] : null), [userProfileData]);
+  const isResolvingProfile = !!authUser && (!firestore || !userProfileQuery || profileLoading || userProfileData === undefined);
+  const sessionLoading = authLoading || isResolvingProfile;
 
   const casesRef = useMemo(
     () => firestore ? collection(firestore, 'cases') as CollectionReference<Case> : null,
@@ -64,7 +67,7 @@ function AppProviderInner({ children }: { children: ReactNode }) {
   const { data: users } = useCollection<UserProfile>(usersRef);
   
   useEffect(() => {
-    if (authLoading || profileLoading) return;
+    if (sessionLoading) return;
 
     const publicPaths = ['/'];
 
@@ -85,7 +88,7 @@ function AppProviderInner({ children }: { children: ReactNode }) {
     } else {
       if (!publicPaths.includes(pathname)) router.replace('/');
     }
-  }, [authUser, userProfile, authLoading, profileLoading, pathname, router]);
+  }, [authUser, userProfile, sessionLoading, pathname, router]);
 
   const logout = async () => {
     if (!auth) {
@@ -169,6 +172,7 @@ function AppProviderInner({ children }: { children: ReactNode }) {
   const value: AppContextType = {
     user: authUser,
     userProfile: userProfile || null,
+    sessionLoading,
     cases: cases || [],
     users: users || [],
     logout,

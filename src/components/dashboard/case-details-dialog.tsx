@@ -42,6 +42,7 @@ interface CaseDetailsDialogProps {
 }
 
 const followUpSchema = z.object({
+  expectedArrivalTime: z.string().min(1, 'Expected arrival time is required'),
   therapistLeavingTime: z.string().min(1, "Time of therapist leaving department is mandatory"),
   caseOtCallBackWithin15MinsOfExpectedArrival: z.boolean(),
   actualArrivalTime: z.string().optional(),
@@ -137,6 +138,7 @@ export function CaseDetailsDialog({ caseData: initialCase, open, onOpenChange }:
   const followUpForm = useForm<z.infer<typeof followUpSchema>>({
     resolver: zodResolver(followUpSchema),
     defaultValues: {
+      expectedArrivalTime: '',
       therapistLeavingTime: '',
       caseOtCallBackWithin15MinsOfExpectedArrival: false,
       actualArrivalTime: '',
@@ -179,6 +181,7 @@ export function CaseDetailsDialog({ caseData: initialCase, open, onOpenChange }:
   useEffect(() => {
     if (caseData && open) {
         followUpForm.reset({
+            expectedArrivalTime: toTimeInput(caseData.expectedArrivalTime),
             therapistLeavingTime: toTimeInput(caseData.therapistLeavingTime),
             caseOtCallBackWithin15MinsOfExpectedArrival: caseData.caseOtCallBackWithin15MinsOfExpectedArrival || false,
             actualArrivalTime: toTimeInput(caseData.actualArrivalTime),
@@ -242,6 +245,10 @@ export function CaseDetailsDialog({ caseData: initialCase, open, onOpenChange }:
   }, [caseData]);
 
   const isInvolvedUser = isOpeningTherapist || isBuddy || isResponsibleClerk || isClerk;
+  const canEditExpectedArrivalTime = useMemo(() => {
+    if (isComplete && !isWithin24Hours) return false;
+    return isOpeningTherapist || isBuddy || isResponsibleClerk || isClerk;
+  }, [isOpeningTherapist, isBuddy, isResponsibleClerk, isClerk, isComplete, isWithin24Hours]);
 
   // COT Phase 1: Clerk and the assigned Buddy OT can edit
   // CGAT Phase 1: Any involved user can edit (Case OT needs to record arrival/departure)
@@ -270,6 +277,7 @@ export function CaseDetailsDialog({ caseData: initialCase, open, onOpenChange }:
 
   const canShowPhase2 = hasPhase1BeenSubmitted || isComplete;
   const canSelfRecordCGAT = isCGAT && isOpeningTherapist && !isComplete;
+  const canSaveInitialFollowUp = canEditPhase1 || canEditExpectedArrivalTime;
 
   const combineDateAndTime = (baseDate: Date, timeString: string | undefined): Date | null => {
       if (!timeString) return null;
@@ -294,6 +302,7 @@ export function CaseDetailsDialog({ caseData: initialCase, open, onOpenChange }:
     const actualArrivalTime = values.caseOtCallBackWithin15MinsOfExpectedArrival ? combineDateAndTime(baseDate, values.actualArrivalTime) : null;
     
     const updateData: Partial<Case> = {
+      expectedArrivalTime: combineDateAndTime(baseDate, values.expectedArrivalTime) || caseData.expectedArrivalTime,
       therapistLeavingTime: combineDateAndTime(baseDate, values.therapistLeavingTime),
       caseOtCallBackWithin15MinsOfExpectedArrival: values.caseOtCallBackWithin15MinsOfExpectedArrival,
       actualArrivalTime: actualArrivalTime,
@@ -495,6 +504,7 @@ export function CaseDetailsDialog({ caseData: initialCase, open, onOpenChange }:
                     <DetailItem label="Case Therapist" value={caseData.openingTherapistId} />
                     <DetailItem label="Therapist Phone" value={caseData.therapistPhone} />
                     <DetailItem label="Buddy Therapist" value={caseData.buddyTherapistId} />
+                    <DetailItem label="Responsible Clerk" value={caseData.responsibleClerkId} />
                     <DetailItem label="Will Return to Department" value={caseData.willOtReturnToDepartment} />
                     <Separator className="col-span-2" />
                     <DetailItem label="Leaving Dept" value={formatTime24h(caseData.therapistLeavingTime)} />
@@ -534,6 +544,20 @@ export function CaseDetailsDialog({ caseData: initialCase, open, onOpenChange }:
                     <Form {...followUpForm}>
                         <form className="space-y-6">
                             <h3 className="font-bold text-lg flex items-center gap-2 text-primary"><Clock className="h-5 w-5" /> Initial Follow-up</h3>
+
+                            <FormField control={followUpForm.control} name="expectedArrivalTime" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Expected Arrival Time</FormLabel>
+                                    <FormControl>
+                                        <TimeInput
+                                            {...field}
+                                            disabled={!canEditExpectedArrivalTime || isSubmitting}
+                                            onClear={() => followUpForm.setValue('expectedArrivalTime', '')}
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
                             
                             <FormField control={followUpForm.control} name="therapistLeavingTime" render={({ field }) => (
                                 <FormItem>
@@ -664,7 +688,7 @@ export function CaseDetailsDialog({ caseData: initialCase, open, onOpenChange }:
                                 )} />
                             </div>
 
-                            {canEditPhase1 && (
+                            {canSaveInitialFollowUp && (
                                 <div className="flex gap-4">
                                     <Button 
                                         type="button" 
@@ -675,14 +699,16 @@ export function CaseDetailsDialog({ caseData: initialCase, open, onOpenChange }:
                                     >
                                         Save Progress
                                     </Button>
-                                    <Button 
-                                        type="button" 
-                                        className="flex-1" 
-                                        disabled={isSubmitting}
-                                        onClick={() => handleFollowUpSubmit(followUpForm.getValues(), true)}
-                                    >
-                                        {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Submit Changes"}
-                                    </Button>
+                                    {canEditPhase1 && (
+                                        <Button
+                                            type="button"
+                                            className="flex-1"
+                                            disabled={isSubmitting}
+                                            onClick={() => handleFollowUpSubmit(followUpForm.getValues(), true)}
+                                        >
+                                            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Submit Changes"}
+                                        </Button>
+                                    )}
                                 </div>
                             )}
                         </form>

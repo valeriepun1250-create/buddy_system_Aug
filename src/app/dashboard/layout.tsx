@@ -6,18 +6,19 @@ import { useAppContext } from '@/components/providers/app-provider';
 import { Header } from '@/components/dashboard/header';
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
-  const { user, userProfile } = useAppContext();
+  const { user, userProfile, sessionLoading } = useAppContext();
   const router = useRouter();
 
   useEffect(() => {
+    if (sessionLoading) return;
     if (!user) {
       router.replace('/');
     } else if (userProfile && !userProfile.approved) {
       router.replace('/awaiting-approval');
     }
-  }, [user, userProfile, router]);
+  }, [user, userProfile, sessionLoading, router]);
 
-  if (!user || !userProfile || !userProfile.approved) {
+  if (sessionLoading || !user || !userProfile || !userProfile.approved) {
     // Render a loading state or null while redirecting
     return (
         <div className="flex h-screen w-full items-center justify-center bg-background">

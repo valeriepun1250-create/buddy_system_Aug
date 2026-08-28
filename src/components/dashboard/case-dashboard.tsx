@@ -3,18 +3,51 @@
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/components/providers/app-provider';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CaseList } from './case-list';
-import { FilePlus2 } from 'lucide-react';
+import { FilePlus2, Search, X } from 'lucide-react';
 import { NewCaseDialog } from './new-case-dialog';
 import { CaseDetailsDialog } from './case-details-dialog';
 import type { Case } from '@/lib/types';
 import { Timestamp } from 'firebase/firestore';
 import { SelectCaseTypeDialog } from './select-case-type-dialog';
+import { format } from 'date-fns';
 
 const toVisitDateMillis = (caseData: Case) => {
   const date = caseData.visitDate || caseData.createdAt;
   return date instanceof Timestamp ? date.toMillis() : new Date(date).getTime();
+};
+
+const toVisitDate = (caseData: Case) => {
+  const date = caseData.visitDate || caseData.createdAt;
+  return date instanceof Timestamp ? date.toDate() : new Date(date);
+};
+
+const normalizeSearchText = (value: unknown) => String(value ?? '').toLowerCase().trim();
+
+const getCaseSearchText = (caseData: Case) => {
+  const visitDate = toVisitDate(caseData);
+  const visitDateText = Number.isNaN(visitDate.getTime()) ? '' : format(visitDate, 'dd/MM/yyyy yyyy-MM-dd');
+  const patientOPD = Array.isArray(caseData.patientOPD) ? caseData.patientOPD.join(' ') : caseData.patientOPD;
+  const patientPhone = Array.isArray(caseData.patientPhone) ? caseData.patientPhone.join(' ') : caseData.patientPhone;
+  const oahNames = [
+    ...(caseData.oahNames || []),
+    ...(caseData.cgatVisitUnits || []).map(unit => unit.oahName),
+  ].join(' ');
+
+  return [
+    caseData.caseType,
+    caseData.status,
+    patientOPD,
+    patientPhone,
+    caseData.homeVisitDistrict,
+    caseData.openingTherapistId,
+    caseData.buddyTherapistId,
+    caseData.responsibleClerkId,
+    oahNames,
+    visitDateText,
+  ].map(normalizeSearchText).join(' ');
 };
 
 export function CaseDashboard() {
@@ -24,6 +57,7 @@ export function CaseDashboard() {
   const [caseToCopy, setCaseToCopy] = useState<Case | null>(null);
   const [isSelectCaseTypeOpen, setIsSelectCaseTypeOpen] = useState(false);
   const [newCaseType, setNewCaseType] = useState<'COT' | 'CGAT' | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const selectedCase = useMemo(() => {
     if (!selectedCaseId) return null;
@@ -56,8 +90,20 @@ export function CaseDashboard() {
     });
   }, [cases]);
 
-  const cotCases = useMemo(() => allCases.filter(c => c.caseType === 'COT'), [allCases]);
-  const cgatCases = useMemo(() => allCases.filter(c => c.caseType === 'CGAT'), [allCases]);
+  const filteredMyCases = useMemo(() => {
+    const query = normalizeSearchText(searchQuery);
+    if (!query) return myCases;
+    return myCases.filter(caseData => getCaseSearchText(caseData).includes(query));
+  }, [myCases, searchQuery]);
+
+  const filteredAllCases = useMemo(() => {
+    const query = normalizeSearchText(searchQuery);
+    if (!query) return allCases;
+    return allCases.filter(caseData => getCaseSearchText(caseData).includes(query));
+  }, [allCases, searchQuery]);
+
+  const cotCases = useMemo(() => filteredAllCases.filter(c => c.caseType === 'COT'), [filteredAllCases]);
+  const cgatCases = useMemo(() => filteredAllCases.filter(c => c.caseType === 'CGAT'), [filteredAllCases]);
 
   if (!userProfile) return null;
   
@@ -91,18 +137,41 @@ export function CaseDashboard() {
               <TabsTrigger value="cot-cases">COT Cases</TabsTrigger>
               <TabsTrigger value="cgat-cases">CGAT Cases</TabsTrigger>
             </TabsList>
-          {userProfile.role === 'Case Therapist' && (
-            <Button onClick={() => setIsSelectCaseTypeOpen(true)}>
-              <FilePlus2 className="mr-2 h-4 w-4" />
-              New Case
-            </Button>
-          )}
+          <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
+            <div className="relative w-full sm:w-72">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search cases"
+                className="h-10 pl-9 pr-9"
+              />
+              {searchQuery && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2"
+                  onClick={() => setSearchQuery('')}
+                  aria-label="Clear search"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+            {userProfile.role === 'Case Therapist' && (
+              <Button onClick={() => setIsSelectCaseTypeOpen(true)} className="w-full sm:w-auto">
+                <FilePlus2 className="mr-2 h-4 w-4" />
+                New Case
+              </Button>
+            )}
+          </div>
         </div>
         <TabsContent value="my-cases">
-          <CaseList cases={myCases} onCaseSelect={(c) => setSelectedCaseId(c.id)} onCaseCopy={handleCopyCase} />
+          <CaseList cases={filteredMyCases} onCaseSelect={(c) => setSelectedCaseId(c.id)} onCaseCopy={handleCopyCase} />
         </TabsContent>
         <TabsContent value="all-cases">
-          <CaseList cases={allCases} onCaseSelect={(c) => setSelectedCaseId(c.id)} onCaseCopy={handleCopyCase} />
+          <CaseList cases={filteredAllCases} onCaseSelect={(c) => setSelectedCaseId(c.id)} onCaseCopy={handleCopyCase} />
         </TabsContent>
         <TabsContent value="cot-cases">
           <CaseList cases={cotCases} onCaseSelect={(c) => setSelectedCaseId(c.id)} onCaseCopy={handleCopyCase} />
