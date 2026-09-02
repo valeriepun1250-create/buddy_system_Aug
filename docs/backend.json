@@ -69,6 +69,7 @@
         "expectedArrivalTime": { "type": "string", "format": "date-time" },
         "responsibleClerkId": { "type": "string" },
         "therapistLeavingTime": { "type": "string", "format": "date-time" },
+        "therapistLeavingTimeNotApplicable": { "type": "boolean" },
         "actualArrivalTime": { "type": "string", "format": "date-time" },
         "caseClosingTime": { "type": "string", "format": "date-time" },
         "cgatIntervals": {

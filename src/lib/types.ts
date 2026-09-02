@@ -77,6 +77,7 @@ export interface Case {
   expectedArrivalTime: Date | string | Timestamp;
   responsibleClerkId?: string;
   therapistLeavingTime?: Date | string | Timestamp | null;
+  therapistLeavingTimeNotApplicable?: boolean;
   caseOtCallBackWithin15MinsOfExpectedArrival?: boolean;
   caseOtDidNotCallBack?: boolean;
   clerkContactTime?: Date | string | Timestamp | null;

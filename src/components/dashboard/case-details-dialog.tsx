@@ -129,6 +129,7 @@ export function CaseDetailsDialog({ caseData: initialCase, open, onOpenChange }:
   const { userProfile, updateCase, cases } = useAppContext();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [activeTab, setActiveTab] = useState('case-details');
 
   const caseData = useMemo(() => {
     if (!initialCase) return null;
@@ -180,9 +181,12 @@ export function CaseDetailsDialog({ caseData: initialCase, open, onOpenChange }:
 
   useEffect(() => {
     if (caseData && open) {
+        setActiveTab('case-details');
         followUpForm.reset({
             expectedArrivalTime: toTimeInput(caseData.expectedArrivalTime),
-            therapistLeavingTime: toTimeInput(caseData.therapistLeavingTime),
+            therapistLeavingTime: caseData.therapistLeavingTimeNotApplicable
+                ? 'NA'
+                : toTimeInput(caseData.therapistLeavingTime),
             caseOtCallBackWithin15MinsOfExpectedArrival: caseData.caseOtCallBackWithin15MinsOfExpectedArrival || false,
             actualArrivalTime: toTimeInput(caseData.actualArrivalTime),
             expectedFinishTime: toTimeInput(caseData.expectedFinishTime),
@@ -261,7 +265,7 @@ export function CaseDetailsDialog({ caseData: initialCase, open, onOpenChange }:
   // Phase 1 is "submitted" if it has therapist leaving time and at least one safety status recorded
   const hasPhase1BeenSubmitted = useMemo(() => {
     if (!caseData) return false;
-    return !!caseData.therapistLeavingTime && (
+    return (!!caseData.therapistLeavingTime || !!caseData.therapistLeavingTimeNotApplicable) && (
         caseData.caseOtCallBackWithin15MinsOfExpectedArrival ||
         caseData.caseOtDidNotCallBack ||
         caseData.arrivalTimeOutOfOfficeHourNotifiedBuddy ||
@@ -303,7 +307,10 @@ export function CaseDetailsDialog({ caseData: initialCase, open, onOpenChange }:
     
     const updateData: Partial<Case> = {
       expectedArrivalTime: combineDateAndTime(baseDate, values.expectedArrivalTime) || caseData.expectedArrivalTime,
-      therapistLeavingTime: combineDateAndTime(baseDate, values.therapistLeavingTime),
+      therapistLeavingTime: values.therapistLeavingTime === 'NA'
+          ? null
+          : combineDateAndTime(baseDate, values.therapistLeavingTime),
+      therapistLeavingTimeNotApplicable: values.therapistLeavingTime === 'NA',
       caseOtCallBackWithin15MinsOfExpectedArrival: values.caseOtCallBackWithin15MinsOfExpectedArrival,
       actualArrivalTime: actualArrivalTime,
       expectedFinishTime: values.caseOtCallBackWithin15MinsOfExpectedArrival ? combineDateAndTime(baseDate, values.expectedFinishTime) : null,
@@ -466,7 +473,7 @@ export function CaseDetailsDialog({ caseData: initialCase, open, onOpenChange }:
           </div>
         </DialogHeader>
 
-        <Tabs defaultValue="case-details" className="flex-grow min-h-0 flex flex-col">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-grow min-h-0 flex flex-col">
             <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="case-details">Summary</TabsTrigger>
                 {isCGAT && <TabsTrigger value="interval-log">Interval Log</TabsTrigger>}
@@ -507,7 +514,10 @@ export function CaseDetailsDialog({ caseData: initialCase, open, onOpenChange }:
                     <DetailItem label="Responsible Clerk" value={caseData.responsibleClerkId} />
                     <DetailItem label="Will Return to Department" value={caseData.willOtReturnToDepartment} />
                     <Separator className="col-span-2" />
-                    <DetailItem label="Leaving Dept" value={formatTime24h(caseData.therapistLeavingTime)} />
+                    <DetailItem
+                        label="Leaving Dept"
+                        value={caseData.therapistLeavingTimeNotApplicable ? 'N/A' : formatTime24h(caseData.therapistLeavingTime)}
+                    />
                     <DetailItem label="Expected Arrival Time" value={formatTime24h(caseData.expectedArrivalTime)} />
                     <DetailItem label={isCGAT ? "Arrival Time to First OAH" : "Actual Arrival"} value={formatTime24h(caseData.actualArrivalTime)} />
                     <DetailItem label={isCGAT ? "Expected Last OAH Finish Time" : "Expected Finish Time"} value={formatTime24h(caseData.expectedFinishTime)} />
@@ -545,34 +555,37 @@ export function CaseDetailsDialog({ caseData: initialCase, open, onOpenChange }:
                         <form className="space-y-6">
                             <h3 className="font-bold text-lg flex items-center gap-2 text-primary"><Clock className="h-5 w-5" /> Initial Follow-up</h3>
 
-                            <FormField control={followUpForm.control} name="expectedArrivalTime" render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Expected Arrival Time</FormLabel>
-                                    <FormControl>
-                                        <TimeInput
-                                            {...field}
-                                            disabled={!canEditExpectedArrivalTime || isSubmitting}
-                                            onClear={() => followUpForm.setValue('expectedArrivalTime', '')}
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )} />
-                            
-                            <FormField control={followUpForm.control} name="therapistLeavingTime" render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Time of therapist leaving department</FormLabel>
-                                    <FormControl>
-                                        <TimeInput 
-                                            {...field} 
-                                            disabled={!canEditPhase1 || isSubmitting}
-                                            onSetNow={() => followUpForm.setValue('therapistLeavingTime', format(new Date(), 'HH:mm'))} 
-                                            onClear={() => followUpForm.setValue('therapistLeavingTime', '')}
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )} />
+                            <div className="grid gap-4 md:grid-cols-2">
+                                <FormField control={followUpForm.control} name="expectedArrivalTime" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Expected Arrival Time</FormLabel>
+                                        <FormControl>
+                                            <TimeInput
+                                                {...field}
+                                                disabled={!canEditExpectedArrivalTime || isSubmitting}
+                                                onClear={() => followUpForm.setValue('expectedArrivalTime', '')}
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+
+                                <FormField control={followUpForm.control} name="therapistLeavingTime" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Time of therapist leaving department</FormLabel>
+                                        <FormControl>
+                                            <TimeInput
+                                                {...field}
+                                                allowNotApplicable
+                                                disabled={!canEditPhase1 || isSubmitting}
+                                                onSetNow={() => followUpForm.setValue('therapistLeavingTime', format(new Date(), 'HH:mm'))}
+                                                onClear={() => followUpForm.setValue('therapistLeavingTime', '')}
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                            </div>
 
                             <div className="space-y-4">
                                 <FormField control={followUpForm.control} name="caseOtCallBackWithin15MinsOfExpectedArrival" render={({ field }) => (
@@ -688,29 +701,6 @@ export function CaseDetailsDialog({ caseData: initialCase, open, onOpenChange }:
                                 )} />
                             </div>
 
-                            {canSaveInitialFollowUp && (
-                                <div className="flex gap-4">
-                                    <Button 
-                                        type="button" 
-                                        variant="outline" 
-                                        className="flex-1" 
-                                        disabled={isSubmitting}
-                                        onClick={() => handleFollowUpSubmit(followUpForm.getValues(), false)}
-                                    >
-                                        Save Progress
-                                    </Button>
-                                    {canEditPhase1 && (
-                                        <Button
-                                            type="button"
-                                            className="flex-1"
-                                            disabled={isSubmitting}
-                                            onClick={() => handleFollowUpSubmit(followUpForm.getValues(), true)}
-                                        >
-                                            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Submit Changes"}
-                                        </Button>
-                                    )}
-                                </div>
-                            )}
                         </form>
                     </Form>
                 </div>
@@ -867,8 +857,41 @@ export function CaseDetailsDialog({ caseData: initialCase, open, onOpenChange }:
             </TabsContent>
         </Tabs>
 
-        <DialogFooter className="pt-4 mt-auto border-t">
-            <Button variant="outline" disabled={isSubmitting} onClick={() => onOpenChange(false)}>Close</Button>
+        <DialogFooter className="mt-auto shrink-0 border-t bg-background pt-4">
+            <div className="flex w-full flex-wrap justify-end gap-2">
+                <Button
+                    type="button"
+                    variant="outline"
+                    className="flex-1 sm:flex-none"
+                    disabled={isSubmitting}
+                    onClick={() => onOpenChange(false)}
+                >
+                    Close
+                </Button>
+                {activeTab === 'case-details' && canSaveInitialFollowUp && (
+                    <>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            className="flex-1 sm:flex-none"
+                            disabled={isSubmitting}
+                            onClick={() => handleFollowUpSubmit(followUpForm.getValues(), false)}
+                        >
+                            Save Progress
+                        </Button>
+                        {canEditPhase1 && (
+                            <Button
+                                type="button"
+                                className="flex-1 sm:flex-none"
+                                disabled={isSubmitting}
+                                onClick={() => handleFollowUpSubmit(followUpForm.getValues(), true)}
+                            >
+                                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Submit Changes"}
+                            </Button>
+                        )}
+                    </>
+                )}
+            </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

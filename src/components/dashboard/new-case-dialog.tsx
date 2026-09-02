@@ -35,6 +35,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { TimeInput } from '../ui/time-input';
+import { DateInput } from '../ui/date-input';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import type { Case, CGATVisitUnit } from '@/lib/types';
 import { PlusCircle, Trash2, Loader2 } from 'lucide-react';
@@ -509,7 +510,7 @@ export function NewCaseDialog({ open, onOpenChange, initialData, caseType }: New
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Visit Date</FormLabel>
-                            <FormControl><Input type="date" {...field} /></FormControl>
+                            <FormControl><DateInput {...field} /></FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -525,7 +526,7 @@ export function NewCaseDialog({ open, onOpenChange, initialData, caseType }: New
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Visit Date</FormLabel>
-                            <FormControl><Input type="date" {...field} /></FormControl>
+                            <FormControl><DateInput {...field} /></FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
