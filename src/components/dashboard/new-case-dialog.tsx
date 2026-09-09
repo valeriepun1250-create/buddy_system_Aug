@@ -572,6 +572,11 @@ export function NewCaseDialog({ open, onOpenChange, initialData, caseType }: New
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
+                            {caseType === 'COT' && (
+                              <SelectItem value="N/A (AM home visit)">
+                                N/A (AM home visit)
+                              </SelectItem>
+                            )}
                             {therapists.map(therapist => (
                                 <SelectItem key={therapist.name} value={therapist.name}>
                                     {therapist.name}
