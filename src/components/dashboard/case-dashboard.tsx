@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '@/components/providers/app-provider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,7 +12,7 @@ import { CaseDetailsDialog } from './case-details-dialog';
 import type { Case } from '@/lib/types';
 import { Timestamp } from 'firebase/firestore';
 import { SelectCaseTypeDialog } from './select-case-type-dialog';
-import { format } from 'date-fns';
+import { format, isSameDay } from 'date-fns';
 
 const toVisitDateMillis = (caseData: Case) => {
   const date = caseData.visitDate || caseData.createdAt;
@@ -58,6 +58,17 @@ export function CaseDashboard() {
   const [isSelectCaseTypeOpen, setIsSelectCaseTypeOpen] = useState(false);
   const [newCaseType, setNewCaseType] = useState<'COT' | 'CGAT' | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [today, setToday] = useState(() => new Date());
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setToday((current) => {
+        const now = new Date();
+        return isSameDay(current, now) ? current : now;
+      });
+    }, 60_000);
+    return () => window.clearInterval(interval);
+  }, []);
 
   const selectedCase = useMemo(() => {
     if (!selectedCaseId) return null;
@@ -76,11 +87,13 @@ export function CaseDashboard() {
     if (userProfile.role === 'Clerk') {
       return cases.filter(
         (c) =>
-          (c.status === 'To be completed by clerk' || c.status === 'To be follow up by clerk/buddy OT')
+          (c.status === 'To be completed by clerk' || c.status === 'To be follow up by clerk/buddy OT') &&
+          !!c.visitDate &&
+          isSameDay(toVisitDate(c), today)
       );
     }
     return [];
-  }, [userProfile, cases]);
+  }, [userProfile, cases, today]);
 
   const allCases = useMemo(() => {
     return [...cases].sort((a, b) => {
